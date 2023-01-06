@@ -11,7 +11,7 @@ To install dependencies and generate a working CMake build, first run the follow
 ```bash
 mkdir build
 cd build
-conan install ..
+conan install .. -s build_type=<Debug/Release>
 ```
 
 ### CMake
