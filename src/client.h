@@ -2,6 +2,8 @@
 #include <string>
 #include <asio.hpp>
 #include <memory>
+#include <vector>
+#include "handler.h"
 
 class Client 
 {
@@ -16,6 +18,8 @@ public:
 private:
 	std::unique_ptr<asio::ip::tcp::socket> socket;
 	bool running;
+	std::vector<ChannelEventHandler> channel_handlers;
+	std::vector<MessageHandler> message_handlers;
 
 	bool handle_error(const asio::error_code& ec, std::string_view context);
 	void main_loop();
