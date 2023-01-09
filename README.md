@@ -1,6 +1,6 @@
 # twirc-cpp
 
-Twitch IRC client implementation in C++ that can be as a template used for building bots.
+Twitch IRC client implementation in C++ that can be used as a template for building bots.
 
 ## Building
 
@@ -20,10 +20,4 @@ Build project files / the project by using CMake with your desired build setup.
 
 #### Windows Example (Visual Studio 2022)
 
-Run the following commands from the repositories root directory:
-
-```bash
-cmake .. -G "Visual Studio 17"
-```
-Afterwards you can open the `.sln` file in the build directory and start writing code.
-To run the program right click `main` in the projects explorer and select it as the startup project.
+Install the CMake tools for Visual Studio and open the project folder.
