@@ -3,7 +3,7 @@
 #include <iostream>
 
 
-void Client::connect(std::string_view nick, std::string_view token, bool use_ssl)
+void Client::connect(std::string_view nick, std::string_view pass, bool use_ssl)
 {
 	if (use_ssl)
 		throw std::invalid_argument("SSL currently not supported");
@@ -29,15 +29,17 @@ void Client::connect(std::string_view nick, std::string_view token, bool use_ssl
 	{
 		throw std::runtime_error("Error connecting to server");
 	}
+	
+	write(std::format("PASS {}\r\n", pass));
+	write(std::format("NICK {}\r\n", nick));
 
-	this->main_loop();
 	this->running = true;
+	this->main_loop();
 }
 
 void Client::disconnect()
 {
 	this->running = false;
-	this->socket.get()->shutdown(asio::ip::tcp::socket::shutdown_both);
 	this->socket.get()->close();
 }
 
@@ -53,7 +55,7 @@ bool Client::handle_error(const asio::error_code& ec, std::string_view context)
 
 void Client::main_loop()
 {
-	if (!this->socket.get()->is_open()) 
+	if (!this->socket.get() || !this->socket.get()->is_open()) 
 	{
 		return;
 	}
@@ -74,4 +76,17 @@ void Client::main_loop()
 			}
 		}
 	}
+}
+
+bool Client::write(std::string_view message)
+{
+	if (!this->socket.get() || !this->socket.get()->is_open())
+	{
+		return false;
+	}
+	asio::error_code ec;
+
+	this->socket.get()->write_some(asio::buffer(message.data(), message.size()), ec);
+
+	return handle_error(ec, "Writing Message");
 }
