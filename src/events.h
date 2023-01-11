@@ -3,15 +3,15 @@
 
 struct MessageEvent
 {
-	std::string_view author;
-	std::string_view channel;
-	std::string_view message;
+	std::string author;
+	std::string channel;
+	std::string message;
 };
 
 struct ChannelEvent 
 {
-	std::string_view channel;
-	std::string_view user;
+	std::string channel;
+	std::string user;
 };
 
 struct JoinEvent : ChannelEvent
