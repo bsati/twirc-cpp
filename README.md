@@ -2,6 +2,13 @@
 
 Twitch IRC client implementation in C++ that can be used as a template for building bots.
 
+## Features
+
+This implementation only supports basic IRC connectivity. 
+* Message tags are not parsed / supported.
+* SSL is only implemented experimentally and not tested. (add `#DEFINE SSL_SUPPORT` in `client.cpp`)
+* Rate limiting has not been implemented. If you intend to use this project as a template for building a real bot that sends messages I urge you to implement rate limiting.
+
 ## Building
 
 ### Conan

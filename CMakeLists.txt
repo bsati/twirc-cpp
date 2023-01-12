@@ -5,7 +5,7 @@ project ("twirc-cpp")
 include(build/conanbuildinfo.cmake)
 conan_basic_setup()
 
-add_executable (main "src/main.cpp" "src/client.h" "src/client.cpp" "src/parser.h" "src/parser.cpp" "src/events.h" "src/handler.h")
+add_executable (main "src/main.cpp" "src/client.h" "src/client.cpp" "src/parser.h" "src/parser.cpp" "src/events.h" "src/handler.h" "src/util.h" "src/util.cpp")
 
 target_link_libraries(main ${CONAN_LIBS})
 

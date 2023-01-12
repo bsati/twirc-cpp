@@ -18,6 +18,9 @@ public:
 	void disconnect();
 	void add_handler(std::unique_ptr<ChannelEventHandler> handler);
 	void add_handler(std::unique_ptr<MessageHandler> handler);
+	void join_channel(std::string_view channel);
+	void leave_channel(std::string_view channel);
+	void send_message(std::string_view channel, std::string_view message);
 private:
 	std::unique_ptr<asio::ip::tcp::socket> socket;
 	bool running;

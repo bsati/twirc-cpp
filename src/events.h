@@ -12,12 +12,5 @@ struct ChannelEvent
 {
 	std::string channel;
 	std::string user;
-};
-
-struct JoinEvent : ChannelEvent
-{
-};
-
-struct PartEvent : ChannelEvent
-{
+	bool part_event;
 };

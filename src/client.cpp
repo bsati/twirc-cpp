@@ -1,26 +1,51 @@
 #include "client.h"
+#include "util.h"
 #include <stdexcept>
 #include <iostream>
+#ifdef SSL_SUPPORT
+#include <asio/ssl.hpp>
+#endif
 
+
+constexpr std::string_view delimiter = "\r\n";
 
 void Client::connect(std::string_view nick, std::string_view pass, bool use_ssl)
 {
-	if (use_ssl)
-		throw std::invalid_argument("SSL currently not supported");
 
-	auto host = "irc.chat.twitch.tv";
-	auto port_str = "6667";
+	constexpr auto host = "irc.chat.twitch.tv";
+	constexpr auto ssl_port_str = "6697";
+	constexpr auto port_str = "6667";
+
+#ifndef SSL_SUPPORT
+	if (use_ssl)
+	{
+		throw std::invalid_argument("compiled without ssl support");
+	}
+#endif
 
 	// Resolve DNS
-	asio::ip::tcp::resolver::query resolver_query(host, port_str, asio::ip::tcp::resolver::query::numeric_service);
+	auto port = use_ssl ? ssl_port_str : port_str;
+	asio::ip::tcp::resolver::query resolver_query(host, use_ssl ? ssl_port_str : port_str, asio::ip::tcp::resolver::query::numeric_service);
 	asio::io_service ios;
 	asio::ip::tcp::resolver resolver(ios);
 	auto it = resolver.resolve(resolver_query);
 	auto endpoint = it->endpoint();
 
-	asio::io_context context;
+	if (use_ssl)
+	{
+#ifdef SSL_SUPPORT
+		asio::ssl::context ctx(asio::ssl::context::sslv23);
+		ctx.set_verify_mode(asio::ssl::context_base::verify_none);
+		this->socket = std::make_unique<asio::ip::tcp::socket>(ctx);
+#endif
+	}
+	else
+	{
+		// use default context
+		asio::io_context ctx;
+		this->socket = std::make_unique<asio::ip::tcp::socket>(ctx);
+	}
 
-	this->socket = std::make_unique<asio::ip::tcp::socket>(context);
 
 	asio::error_code ec;
 	this->socket.get()->connect(endpoint, ec);
@@ -30,10 +55,13 @@ void Client::connect(std::string_view nick, std::string_view pass, bool use_ssl)
 		throw std::runtime_error("Error connecting to server");
 	}
 	
-	write(std::format("PASS {}\r\n", pass));
-	write(std::format("NICK {}\r\n", nick));
+	write(std::format("PASS {}{}", pass, delimiter));
+	write(std::format("NICK {}{}", nick, delimiter));
 
 	this->running = true;
+
+	this->join_channel(to_lower(nick));
+
 	this->main_loop();
 }
 
@@ -51,6 +79,21 @@ void Client::add_handler(std::unique_ptr<ChannelEventHandler> handler)
 void Client::add_handler(std::unique_ptr<MessageHandler> handler)
 {
 	this->message_handlers.push_back(std::move(handler));
+}
+
+void Client::join_channel(std::string_view channel)
+{
+	this->write(std::format("JOIN #{}{}", channel, delimiter));
+}
+
+void Client::leave_channel(std::string_view channel)
+{
+	this->write(std::format("PART #{}{}", channel, delimiter));
+}
+
+void Client::send_message(std::string_view channel, std::string_view message)
+{
+	this->write(std::format("PRIVMSG #{} :{}{}", channel, message, delimiter));
 }
 
 bool Client::handle_error(const asio::error_code& ec, std::string_view context)
@@ -74,38 +117,55 @@ void Client::main_loop()
 
 	while (this->running)
 	{
-		auto bytes_read = this->socket.get()->available();
-
-		if (bytes_read > 0)
+		if (this->socket.get()->available() == 0)
 		{
-			asio::streambuf buf;
-			asio::read_until(*this->socket.get(), buf, "\r\n");
+			continue;
+		}
+		asio::streambuf buf;
+		auto bytes_read = asio::read_until(*this->socket.get(), buf, "\r\n");
+		if (bytes_read > 0) 
+		{
+			buf.commit(bytes_read);
 			std::string message = asio::buffer_cast<const char*>(buf.data());
-
-			std::cout << message;
-
-			if (message == "PING :tmi.twitch.tv")
+			std::vector < std::string_view> messages;
+			if (message.find("\r\n") != message.rfind("\r\n"))
 			{
-				this->write("PONG :tmi.twitch.tv");
+				messages = split(message, "\r\n", true);
 			}
 			else
 			{
-				auto s = split(message, " ");
-				if (s.size() < 2) 
+				messages = { message };
+			}
+
+			for (auto& message : messages)
+			{
+				if (message == "PING :tmi.twitch.tv")
 				{
-					std::cout << "Received malformed message that cannot be parsed: <" << message << ">\n";
+					this->write("PONG :tmi.twitch.tv");
 				}
-				if (s[1] == "PRIVMSG")
+				else if (message.size() == 0)
 				{
-					this->dispatch(this->parser.parse_message_event(message));
+					continue;
 				}
-				else if (s[1] == "JOIN") 
+				else
 				{
-					this->dispatch(this->parser.parse_join_event(message));
-				}
-				else if (s[1] == "PART") 
-				{
-					this->dispatch(this->parser.parse_part_event(message));
+					auto s = split(message, " ", false);
+					if (s.size() < 2) 
+					{
+						std::cout << "Received malformed message that cannot be parsed: <" << message << ">\n";
+					}
+					if (s[1] == "PRIVMSG")
+					{
+						this->dispatch(this->parser.parse_message_event(message));
+					}
+					else if (s[1] == "JOIN") 
+					{
+						this->dispatch(this->parser.parse_join_event(message));
+					}
+					else if (s[1] == "PART") 
+					{
+						this->dispatch(this->parser.parse_part_event(message));
+					}
 				}
 			}
 		}

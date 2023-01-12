@@ -22,12 +22,7 @@ class ChannelLogHandler : public ChannelEventHandler
 public:
 	virtual void handle_channel_event(const ChannelEvent& event) override
 	{
-		bool part_event = false;
-		if (static_cast<const PartEvent*>(&event) != nullptr)
-		{
-			part_event = true;
-		}
-		std::cout << std::format("[{}] {} #{}\n", event.user, part_event ? "parted" : "joined", event.channel);
+		std::cout << std::format("[{}] {} #{}\n", event.user, event.part_event ? "parted" : "joined", event.channel);
 	}
 };
 

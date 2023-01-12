@@ -3,31 +3,11 @@
 #include <stdexcept>
 #include <regex>
 
-std::vector<std::string_view> split(std::string_view input, std::string_view delimiter)
-{
-	size_t previous = 0, next = 0;
-
-	std::vector<std::string_view> result{};
-
-	while ((next = input.find(delimiter, previous)) != std::string::npos)
-	{
-		result.push_back(input.substr(previous, next - previous));
-		previous = next + 1;
-	}
-
-	result.push_back(input.substr(previous));
-
-	return result;
-}
-
-
-
-std::smatch Parser::parse_message(const std::regex& format, std::string_view message, int group_count)
+std::smatch Parser::parse_message(const std::regex& format, const std::string& message, int group_count)
 {
 	std::smatch matches;
-	std::string msg(message);
 
-	if (!std::regex_search(msg, matches, format) || matches.size() != group_count)
+	if (!std::regex_search(message, matches, format) || matches.size() != group_count + 1)
 	{
 		throw std::invalid_argument("malformed message");
 	}
@@ -37,7 +17,8 @@ std::smatch Parser::parse_message(const std::regex& format, std::string_view mes
 
 MessageEvent Parser::parse_message_event(std::string_view message)
 {
-	auto matches = this->parse_message(this->message_format, message, 3);
+	std::string msg(message);
+	auto matches = this->parse_message(this->message_format, msg, 3);
 
 	return {
 		matches[1].str(),
@@ -46,21 +27,22 @@ MessageEvent Parser::parse_message_event(std::string_view message)
 	};
 }
 
-JoinEvent Parser::parse_join_event(std::string_view message)
+ChannelEvent Parser::parse_join_event(std::string_view message)
 {
-	
-	auto matches = this->parse_message(this->join_format, message, 2);
+	std::string msg(message);
+	auto matches = this->parse_message(this->join_format, msg, 2);
 
 	return {
-		matches[1], matches[2]
+		matches[1], matches[2], false
 	};
 }
 
-PartEvent Parser::parse_part_event(std::string_view message)
+ChannelEvent Parser::parse_part_event(std::string_view message)
 {
-	auto matches = this->parse_message(this->part_format, message, 2);
+	std::string msg(message);
+	auto matches = this->parse_message(this->part_format, msg, 2);
 
 	return {
-		matches[1], matches[2]
+		matches[1], matches[2], true
 	};
 }
